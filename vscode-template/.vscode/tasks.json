@@ -1,0 +1,127 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "nuttx: boards (filter)",
+      "type": "shell",
+      "command": "./tools/configure.sh -L 2>/dev/null | grep -i -- \"${input:boardFilter}\" || echo 'nothing found'",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: configure",
+      "type": "shell",
+      "command": "./tools/configure.sh ${input:boardConfig}",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: distclean",
+      "type": "shell",
+      "command": "make distclean",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: menuconfig",
+      "type": "shell",
+      "command": "make menuconfig",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: build",
+      "type": "shell",
+      "command": "make -j$(nproc)",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "nuttx: clean",
+      "type": "shell",
+      "command": "make clean",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: size",
+      "type": "shell",
+      "command": "__TOOLCHAIN_SIZE__ nuttx",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "debug server: openocd (background)",
+      "type": "shell",
+      "command": "${config:nuttxSdk.openocd}",
+      "args": ["-f", "${config:nuttxSdk.openocdCfg}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "." },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Listening on port 3333|Info : Listening"
+        }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "debug server: qemu rv-virt (background)",
+      "type": "shell",
+      "command": "qemu-system-riscv32",
+      "args": [
+        "-M", "virt", "-bios", "none",
+        "-kernel", "${workspaceFolder}/nuttx",
+        "-nographic", "-s", "-S"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "." },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "debug server: stop",
+      "type": "shell",
+      "command": "pkill -f 'openocd|qemu-system' || true",
+      "problemMatcher": []
+    },
+    {
+      "label": "nuttx: monitor serial",
+      "type": "shell",
+      "command": "picocom -b ${input:baud} ${input:serialPort}",
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "boardConfig",
+      "description": "board:config (use the 'nuttx: boards (filter)' task to discover)",
+      "type": "promptString"
+    },
+    {
+      "id": "boardFilter",
+      "description": "Board filter (e.g.: stm32, esp32, gd32, sim)",
+      "type": "promptString"
+    },
+    {
+      "id": "serialPort",
+      "description": "Serial port",
+      "type": "promptString",
+      "default": "/dev/ttyACM0"
+    },
+    {
+      "id": "baud",
+      "description": "Baudrate",
+      "type": "promptString",
+      "default": "115200"
+    }
+  ]
+}

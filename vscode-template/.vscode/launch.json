@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NuttX Simulator (sim:nsh), no board",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/nuttx",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "externalConsole": false,
+      "setupCommands": [
+        { "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "NuttX on board, attach OpenOCD :3333",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/nuttx",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "__TOOLCHAIN_GDB__",
+      "miDebuggerServerAddress": "localhost:3333",
+      "preLaunchTask": "debug server: openocd (background)",
+      "postDebugTask": "debug server: stop",
+      "setupCommands": [
+        { "text": "-enable-pretty-printing", "ignoreFailures": true },
+        { "text": "monitor reset halt", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "NuttX on QEMU (rv-virt), attach :1234",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/nuttx",
+      "cwd": "${workspaceFolder}",
+      "MIMode": "gdb",
+      "miDebuggerPath": "__TOOLCHAIN_GDB__",
+      "miDebuggerServerAddress": "localhost:1234",
+      "preLaunchTask": "debug server: qemu rv-virt (background)",
+      "setupCommands": [
+        { "text": "-enable-pretty-printing", "ignoreFailures": true }
+      ]
+    },
+    {
+      "name": "NuttX ARM (cortex-debug + OpenOCD)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "servertype": "openocd",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/nuttx",
+      "gdbPath": "__TOOLCHAIN_GDB__",
+      "serverpath": "${config:nuttxSdk.openocd}",
+      "configFiles": ["${config:nuttxSdk.openocdCfg}"],
+      "runToEntryPoint": "nx_start"
+    }
+  ]
+}

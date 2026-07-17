@@ -1,0 +1,61 @@
+{
+  "// _comment": "NuttX SDK VSCode template. Placeholders replaced by scripts/nx-init-project.sh: __NUTTX_SDK_HOME__, __TOOLCHAIN_COMPILER__, __INTELLISENSE_MODE__.",
+
+  "terminal.integrated.profiles.linux": {
+    "nuttx-sdk": {
+      "path": "/bin/bash",
+      "args": [
+        "--rcfile",
+        "__NUTTX_SDK_HOME__/nuttx-env.sh"
+      ],
+      "icon": "chip"
+    }
+  },
+  "terminal.integrated.defaultProfile.linux": "nuttx-sdk",
+
+  "terminal.integrated.env.linux": {
+    "NUTTX_SDK_HOME": "__NUTTX_SDK_HOME__"
+  },
+
+  "C_Cpp.default.compilerPath": "__TOOLCHAIN_COMPILER__",
+  "C_Cpp.default.intelliSenseMode": "__INTELLISENSE_MODE__",
+
+  "// C_Cpp.default.compileCommands": "If you generate compile_commands.json (e.g. bear -- make), it takes precedence and gives exact per-file flags. The keys below are the fallback so IntelliSense works out of the box.",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
+  "C_Cpp.default.forcedInclude": [
+    "${workspaceFolder}/include/nuttx/config.h",
+    "${workspaceFolder}/include/nuttx/compiler.h"
+  ],
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/**",
+    "${workspaceFolder}/include/**",
+    "${workspaceFolder}/../apps/**"
+  ],
+  "C_Cpp.default.browse.path": [
+    "${workspaceFolder}",
+    "${workspaceFolder}/../apps"
+  ],
+  "C_Cpp.default.defines": ["ERROR=-1", "OK=0"],
+  "C_Cpp.default.cStandard": "c11",
+  "C_Cpp.default.dotConfig": "${workspaceFolder}/.config",
+
+  "// nuttxSdk": "keys used by the debug tasks/launch, adjust per board",
+  "nuttxSdk.openocd": "__SDK_OPENOCD__",
+  "nuttxSdk.openocdCfg": "__SDK_OPENOCD_CFG__",
+
+  "cortex-debug.gdbPath": "__TOOLCHAIN_GDB__",
+
+  "files.associations": {
+    "*.h": "c",
+    "Kconfig*": "kconfig",
+    "defconfig": "shellscript"
+  },
+
+  "files.exclude": {
+    "**/.git": true,
+    "**/.deps": true,
+    "**/.depend": true,
+    "**/*.o": true,
+    "**/*.a": true
+  }
+}

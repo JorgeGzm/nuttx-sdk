@@ -1,0 +1,162 @@
+# NuttX SDK, toolchain selection for installation
+#
+# Opened by `make menuconfig` (scripts/sdk-menuconfig.sh) with the SAME
+# interface as NuttX (kconfig-mconf). Items marked [*] are already installed;
+# marking a new item = download/install on save and exit; unmarking an
+# installed one = removal offer.
+#
+# The versions are NOT in this file: each group runs the corresponding
+# function from nuttx/tools/ci/platforms/ubuntu.sh, the same script that
+# the official NuttX CI Docker uses, so the installed version is always the
+# one pinned by the CI of the nuttx tree in use.
+
+mainmenu "NuttX SDK $(NUTTX_SDK_VERSION), Toolchain Installer (toolchain versions from NuttX CI)"
+
+comment "[*] = will be installed / already installed. Save and exit to apply."
+
+menu "Toolchains by architecture"
+
+config SDK_ARM
+	bool "ARM 32-bit (arm-none-eabi-gcc)"
+	default n
+	help
+	  GCC for ARM Cortex-M/R bare-metal, official ARM release.
+
+	  Typical boards: STM32 (Linum-STM32H753BI), nRF52/nRF53, RP2040
+	  (Raspberry Pi Pico), SAMD, LPC, Kinetis, EFM32...
+
+	  Installs in: toolchains/gcc-arm-none-eabi  (~500 MB)
+	  CI function: arm_gcc_toolchain
+
+config SDK_ARMCLANG
+	bool "ARM 32-bit LLVM (clang, alternative)"
+	default n
+	help
+	  LLVM Embedded Toolchain for Arm. A clang alternative to GCC for
+	  Cortex-M, used by some CI configs (CONFIG_ARM_TOOLCHAIN_CLANG).
+	  Only needed if you build with clang; day-to-day uses the GCC above.
+
+	  Installs in: toolchains/clang-arm-none-eabi  (~700 MB)
+	  CI function: arm_clang_toolchain
+
+config SDK_ARM64
+	bool "ARM 64-bit (aarch64-none-elf-gcc)"
+	default n
+	help
+	  GCC for ARMv8-A bare-metal (official ARM release).
+
+	  Typical boards: Raspberry Pi 3/4/5, PINE64 (Allwinner A64), i.MX8,
+	  QEMU virt aarch64.
+
+	  Installs in: toolchains/gcc-aarch64-none-elf  (~300 MB)
+	  CI function: arm64_gcc_toolchain
+
+config SDK_RISCV
+	bool "RISC-V 32/64-bit (riscv-none-elf-gcc, xPack)"
+	default n
+	help
+	  Multilib GCC for RISC-V bare-metal (xPack). Covers rv32/rv64, with the
+	  hard-float multilibs needed e.g. for GD32VW55x (rv32imafc/ilp32f).
+
+	  Typical boards: GD32VW553K-START, ESP32-C3/C6/H2/P4, CH32V,
+	  K210 (Kendryte), BL602, HiFive, Raspberry Pi Pico 2 RISC-V
+	  (RP2350/Hazard3, rp23xx-rv), QEMU rv-virt.
+
+	  Installs in: toolchains/riscv-none-elf-gcc  (~600 MB)
+	  CI function: riscv_gcc_toolchain
+
+config SDK_XTENSA
+	bool "Xtensa ESP32 (xtensa-esp32/s2/s3-elf-gcc, Espressif)"
+	default n
+	help
+	  Espressif crosstool-NG GCC for the Xtensa-core ESP32s.
+	  A single toolchain covers esp32, esp32s2 and esp32s3.
+
+	  Typical boards: ESP32-DevKitC, ESP32-S3 (Cardputer, M5Stack), ESP32-S2.
+
+	  Installs in: toolchains/xtensa-esp-elf  (~400 MB)
+	  CI function: xtensa_esp_gcc_toolchain
+
+config SDK_MIPS
+	bool "MIPS PIC32 (p32-gcc, Pinguino)"
+	default n
+	help
+	  GCC for Microchip PIC32MX/MZ (Pinguino project compiler).
+
+	  Installs in: toolchains/pinguino-compilers  (~100 MB)
+	  CI function: mips_gcc_toolchain
+
+config SDK_SPARC
+	bool "SPARC LEON (sparc-gaisler-elf-gcc, BCC)"
+	default n
+	help
+	  Gaisler's BCC for the LEON3/LEON4 space processors.
+
+	  Installs in: toolchains/sparc-gaisler-elf-gcc  (~150 MB)
+	  CI function: sparc_gcc_toolchain
+
+config SDK_RX
+	bool "Renesas RX (rx-elf-gcc), BUILDS FROM SOURCE, slow"
+	default n
+	help
+	  GCC for Renesas RX65N etc. WARNING: the CI builds binutils + gcc +
+	  newlib from source (~30-60 min). If you have Docker, prefer extracting
+	  the pre-built one from the CI image:  ./scripts/setup.sh --docker renesas
+
+	  Installs in: toolchains/renesas-toolchain  (~250 MB)
+	  CI function: rx_gcc_toolchain
+
+config SDK_WASI
+	bool "WebAssembly (WASI-SDK + wamrc)"
+	default n
+	help
+	  Clang/WASI-SDK to compile NuttX applications to WebAssembly and the
+	  wamrc AOT compiler (WAMR). Used by the NuttX WASM interpreter
+	  examples.
+
+	  Installs in: toolchains/wasi-sdk + toolchains/wamrc  (~300 MB)
+	  CI function: wasi_sdk
+
+endmenu
+
+menu "Manufacturer SDKs"
+
+config SDK_PICO
+	bool "Raspberry Pi pico-sdk"
+	depends on SDK_ARM || SDK_RISCV
+	default n
+	help
+	  pico-sdk sources, required by the Raspberry Pi Pico / Pico 2 targets
+	  in addition to the toolchain. Exports PICO_SDK_PATH.
+
+	  Depends on a compatible toolchain (that is why it is only editable if
+	  one of them is marked):
+	    SDK_ARM    -> Pico (RP2040) and Pico 2 ARM mode (RP2350, Cortex-M33)
+	    SDK_RISCV  -> Pico 2 RISC-V mode (RP2350, Hazard3): rp23xx-rv
+
+	  Installs in: toolchains/pico-sdk  (~50 MB)
+	  CI function: raspberrypi_pico_sdk
+
+endmenu
+
+# Note: kconfig-frontends is a hard prerequisite, not a menu item
+# (configure.sh/make need it to generate .config). Install it from the distro
+# (apt install kconfig-frontends); the nuttx-install doctor checks for it.
+
+menu "Debug / flashing"
+
+config SDK_OPENOCD_ESP32
+	bool "openocd-esp32 (JTAG for the ESP32 family)"
+	default n
+	help
+	  Espressif's OpenOCD fork with support for all ESP32 chips
+	  (P4, C6, S3, S2, C3...) and the esp_usb_jtag driver (built-in JTAG
+	  over USB, no external probe).
+
+	  The only item that does not come from the CI script (the CI does not
+	  flash hardware): downloaded from the official Espressif GitHub
+	  releases.
+
+	  Installs in: toolchains/openocd-esp32  (~10 MB)
+
+endmenu
