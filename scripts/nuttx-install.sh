@@ -20,6 +20,10 @@
 #   ./scripts/nuttx-install.sh --workspace DIR # another workspace directory
 #   ./scripts/nuttx-install.sh --shallow       # shallow clone (faster)
 #   ./scripts/nuttx-install.sh --check         # doctor only, changes nothing
+#   ./scripts/nuttx-install.sh -y | --yes      # install missing apt packages without asking
+#
+# Missing host packages: the doctor lists them and, unless --check, offers to
+# install them with sudo apt (prompt; -y installs without asking).
 #
 # Sanctioned upstream equivalent: nuttx/tools/ci/cibuild.sh -i -s -c
 # (this script is the selective/quiet version of it, without the chicken-egg
@@ -32,6 +36,7 @@ WORKSPACE="${NUTTX_WORKSPACE:-$HOME/nuttxspace}"
 VENV_DIR="$SDK_ROOT/python-venv"
 SHALLOW=0
 CHECK_ONLY=0
+AUTO_YES=0
 
 err()  { printf '\033[1;31m[err]\033[0m  %s\n' "$*" >&2; }
 info() { printf '\033[1;34m[*]\033[0m   %s\n' "$*"; }
@@ -45,6 +50,7 @@ while [ $# -gt 0 ]; do
     --workspace=*) WORKSPACE="${1#--workspace=}"; shift ;;
     --shallow)     SHALLOW=1; shift ;;
     --check)       CHECK_ONLY=1; shift ;;
+    -y|--yes)      AUTO_YES=1; shift ;;
     -h|--help)     sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) err "unknown option: $1 (use --help)"; exit 2 ;;
   esac
@@ -89,15 +95,73 @@ doctor() {
     missing_opt+=("libncurses-dev"); info "optional missing: ncurses.h (to compile kconfig-frontends)"
   fi
 
+  # Dedup the package lists (some checks map to the same apt package, e.g.
+  # kconfig-conf and kconfig-mconf both come from kconfig-frontends). Optional
+  # packages already listed as required are dropped from the optional line.
+  local req_list="" opt_list=""
   if [ ${#missing_req[@]} -gt 0 ]; then
-    printf '\nInstall the prerequisites and run again:\n\n'
-    printf '  sudo apt install %s\n\n' "${missing_req[*]} ${missing_opt[*]}"
-    return 1
+    req_list="$(printf '%s\n' "${missing_req[@]}" | awk 'NF && !seen[$0]++' | paste -sd' ')"
   fi
   if [ ${#missing_opt[@]} -gt 0 ]; then
-    printf '\nOptional (recommended):  sudo apt install %s\n' "${missing_opt[*]}"
+    opt_list="$(printf '%s\n' "${missing_opt[@]}" \
+      | awk -v r="$req_list" 'BEGIN{split(r,a," ");for(i in a)req[a[i]]=1}
+                              NF && !req[$0] && !seen[$0]++' | paste -sd' ')"
   fi
-  ok "host ready"
+
+  # Nothing missing.
+  if [ -z "$req_list" ] && [ -z "$opt_list" ]; then
+    ok "host ready"
+    return 0
+  fi
+
+  # Show what is missing.
+  printf '\nMissing host packages:\n'
+  [ -n "$req_list" ] && printf '  required:  %s\n' "$req_list"
+  [ -n "$opt_list" ] && printf '  optional:  %s\n' "$opt_list"
+  local all_pkgs
+  all_pkgs="$(printf '%s %s' "$req_list" "$opt_list" | sed 's/^ *//;s/ *$//;s/  */ /g')"
+
+  # --check: report only, never install.
+  if [ "$CHECK_ONLY" = 1 ]; then
+    printf '\nInstall with:  sudo apt install %s\n\n' "$all_pkgs"
+    [ -n "$req_list" ] && return 1
+    return 0
+  fi
+
+  # Offer to install (needs sudo). Non-interactive without -y falls back to
+  # printing the command, so the run never hangs waiting for input.
+  local ans="y"
+  if [ "$AUTO_YES" != 1 ]; then
+    if [ -t 0 ]; then
+      printf '\nInstall them now with apt (uses sudo)? [Y/n] '
+      read -r ans || ans="n"
+      ans="${ans:-y}"
+    else
+      printf '\nInstall with:  sudo apt install %s\n' "$all_pkgs"
+      printf '(or re-run with -y to install automatically)\n\n'
+      [ -n "$req_list" ] && return 1
+      return 0
+    fi
+  fi
+
+  case "$ans" in
+    y|Y|yes|Yes|YES)
+      info "installing: sudo apt-get install -y $all_pkgs"
+      # shellcheck disable=SC2086
+      if sudo apt-get update && sudo apt-get install -y $all_pkgs; then
+        ok "prerequisites installed"
+      else
+        err "apt install failed. Install manually:  sudo apt install $all_pkgs"
+        [ -n "$req_list" ] && return 1
+      fi
+      ;;
+    *)
+      printf '\nOK, skipping. Install manually and run again:\n'
+      printf '  sudo apt install %s\n\n' "$all_pkgs"
+      [ -n "$req_list" ] && return 1
+      ;;
+  esac
+  return 0
 }
 
 # --- 2. SDK Python venv --------------------------------------------------------
