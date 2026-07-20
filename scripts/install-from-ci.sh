@@ -130,17 +130,51 @@ grep -vx 'install_build_tools' "$CI_SCRIPT" \
 mkdir -p "$NUTTXTOOLS"
 [ -f "$NUTTXTOOLS/env.sh" ] || echo "#!/usr/bin/env sh" > "$NUTTXTOOLS/env.sh"
 
+# Run one install function with a live spinner. The CI functions download
+# (curl -s) and extract (xz/tar) silently and a toolchain can be ~1.5 GB, so
+# without feedback it looks frozen. Output goes to a log; on failure we show it.
+run_group() {
+  local g="$1" func="$2" log
+  log="$(mktemp)"
+  ( set -e; "$func" ) >"$log" 2>&1 &
+  local pid=$! secs=0 i=0
+  local frames='|/-\'
+  if [ -t 1 ]; then
+    while kill -0 "$pid" 2>/dev/null; do
+      printf '\r\033[K\033[1;34m[*]\033[0m   installing %-8s %s  %ds (downloading + extracting, please wait)' \
+        "$g" "${frames:$((i%4)):1}" "$secs"
+      sleep 1; secs=$((secs+1)); i=$((i+1))
+    done
+    printf '\r\033[K'
+  fi
+  if wait "$pid"; then
+    ok "group '$g' done (${secs}s)"
+    rm -f "$log"
+    return 0
+  else
+    err "group '$g' failed after ${secs}s:"
+    tail -25 "$log" >&2
+    rm -f "$log"
+    return 1
+  fi
+}
+
+rc=0
 for g in "${GROUPS_SEL[@]}"; do
   func="$(ci_func_for "$g")"
   if ! type "$func" >/dev/null 2>&1; then
     err "CI script has no function '$func', group '$g' not available in this nuttx tree"
-    continue
+    rc=1; continue
   fi
   info "installing group '$g' ($func)…"
-  ( set -e; "$func" )
-  ok "group '$g' done"
+  run_group "$g" "$func" || rc=1
 done
 
 printf '\n'
-ok "Toolchains in $NUTTXTOOLS (versions pinned by ${CI_SCRIPT})"
-printf '      Activate with:  source %s/nuttx-env.sh\n\n' "$SDK_ROOT"
+if [ "$rc" -eq 0 ]; then
+  ok "Toolchains in $NUTTXTOOLS (versions pinned by ${CI_SCRIPT})"
+  printf '      Activate with:  get_nuttx  (or: source %s/nuttx-env.sh)\n\n' "$SDK_ROOT"
+else
+  err "one or more groups failed (see above)."
+fi
+exit "$rc"

@@ -197,27 +197,40 @@ setup_venv() {
 # --- 3. Repositories ------------------------------------------------------------
 clone_or_update() {
   local url="$1" dest="$2"
-  if [ ! -d "$dest/.git" ]; then
-    info "cloning $url"
-    if [ "$SHALLOW" = 1 ]; then
-      git clone --depth 1 "$url" "$dest"
+
+  # Already a git checkout: update it, but NEVER over work in progress. Only
+  # fast-forward a clean checkout that is on the default branch; otherwise
+  # leave it exactly as-is. 'git pull --ff-only' never deletes local branches,
+  # and port/WIP branches are skipped entirely.
+  if [ -d "$dest/.git" ]; then
+    local branch default
+    branch="$(git -C "$dest" branch --show-current)"
+    default="$(git -C "$dest" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')"
+    if [ -n "$(git -C "$dest" status --porcelain)" ]; then
+      warn "$dest has local changes, will not git pull (update it manually)"
+    elif [ -n "$default" ] && [ "$branch" != "$default" ]; then
+      warn "$dest is on branch '$branch' (not '$default'), will not git pull"
     else
-      git clone "$url" "$dest"
+      info "updating $dest (git pull)"
+      git -C "$dest" pull --ff-only || warn "git pull failed, resolve it manually"
     fi
     return
   fi
-  # Already exists: only update if it is clean and on the default branch,
-  # never run over work in progress (port branches, WIP...).
-  local branch default
-  branch="$(git -C "$dest" branch --show-current)"
-  default="$(git -C "$dest" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')"
-  if [ -n "$(git -C "$dest" status --porcelain)" ]; then
-    warn "$dest has local changes, will not git pull (update it manually)"
-  elif [ -n "$default" ] && [ "$branch" != "$default" ]; then
-    warn "$dest is on branch '$branch' (not '$default'), will not git pull"
+
+  # Destination already exists but is not a git repo (no .git dir): NEVER clone
+  # over it. It may hold local branches / WIP from someone else, or a .git file
+  # (worktree/submodule). Leave it untouched so nothing is destroyed.
+  if [ -e "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+    warn "$dest already exists and is not a clean git repo; leaving it untouched (not cloning)"
+    return
+  fi
+
+  # Only reached when the folder is missing or empty: safe to clone fresh.
+  info "cloning $url"
+  if [ "$SHALLOW" = 1 ]; then
+    git clone --depth 1 "$url" "$dest"
   else
-    info "updating $dest (git pull)"
-    git -C "$dest" pull --ff-only || warn "git pull failed, resolve it manually"
+    git clone "$url" "$dest"
   fi
 }
 
@@ -261,17 +274,25 @@ setup_venv
 setup_repos
 check_toolchains
 
+# Point the user at the correct shell startup file (zsh users must NOT use
+# ~/.bashrc; zsh does not read it).
+case "${SHELL:-}" in
+  */zsh)  RCFILE="$HOME/.zshrc" ;;
+  *)      RCFILE="$HOME/.bashrc" ;;
+esac
+
 cat <<EOF
 
 $(ok "Installation complete!")
 
-Activate the environment in THIS terminal (and in every terminal where you use NuttX):
+Set up the get_nuttx command once (bash: ~/.bashrc, zsh: ~/.zshrc):
+
+  echo "source $SDK_ROOT/get_nuttx.sh" >> $RCFILE
+
+Then open a NEW terminal (or run: source $RCFILE) and activate it:
 
   get_nuttx        # activates the toolchains only in this terminal (like 'get_idf')
-
-If you have not set up the command yet, add it to ~/.bashrc (once):
-  echo "source $SDK_ROOT/get_nuttx.sh" >> ~/.bashrc
-  # then:  get_nuttx | get_nuttx menuconfig | get_nuttx help
+  # also:  get_nuttx menuconfig | get_nuttx help
 
 Once activated, try it out (no board needed at all):
   cd $WORKSPACE/nuttx

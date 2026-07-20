@@ -1,7 +1,8 @@
 # shellcheck shell=bash
 # get_nuttx.sh, defines the 'get_nuttx' command (opt-in activation of the NuttX SDK).
 #
-# Does NOT activate anything when sourced: it only DEFINES the function. Add to ~/.bashrc:
+# Does NOT activate anything when sourced: it only DEFINES the function. Add to
+# your shell startup file (bash: ~/.bashrc, zsh: ~/.zshrc):
 #
 #   source /path/to/nuttx-sdk/get_nuttx.sh
 #

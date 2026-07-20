@@ -1,4 +1,4 @@
-# NuttX SDK `v0.1.0`
+# NuttX SDK `v0.1.1`
 
 A single place to hold every cross-toolchain [Apache NuttX](https://nuttx.apache.org/)
 needs, installed on demand from a graphical menu. **No extra meta-tool to
@@ -41,7 +41,7 @@ a box when you add a new board, and never hand-install a compiler again.
 - Linux x86_64.
 - A few host packages (Debian/Ubuntu):
 
-  ```console
+  ```bash
   $ sudo apt install build-essential bison flex gperf libncurses5-dev \
                      genromfs git python3 python3-venv python3-pip curl \
                      kconfig-frontends
@@ -54,15 +54,16 @@ a box when you add a new board, and never hand-install a compiler again.
 
 Keep the SDK next to the NuttX sources, all under `~/nuttxspace`:
 
-```console
-$ mkdir -p ~/nuttxspace && cd ~/nuttxspace
-$ git clone https://github.com/JorgeGzm/nuttx-sdk.git
+```bash
+mkdir -p ~/nuttxspace && cd ~/nuttxspace
+git clone https://github.com/JorgeGzm/nuttx-sdk.git
 ```
 
 ### 2. Install once
 
-```console
-$ ./nuttx-sdk/scripts/nuttx-install.sh
+```bash
+cd ~/nuttxspace/nuttx-sdk
+./scripts/nuttx-install.sh
 ```
 
 This checks your host prerequisites, creates the Python venv, and clones
@@ -71,25 +72,30 @@ time and it only updates what changed.
 
 ### 3. Enable the `get_nuttx` command
 
-Add it to your `~/.bashrc` once (this only **defines** the command, it does
-not activate anything):
+Add it to your shell startup file once (this only **defines** the command, it
+does not activate anything). Use `~/.bashrc` for **bash** or `~/.zshrc` for
+**zsh**:
 
-```console
-$ echo "source ~/nuttxspace/nuttx-sdk/get_nuttx.sh" >> ~/.bashrc
+```bash
+# bash
+echo "source ~/nuttxspace/nuttx-sdk/get_nuttx.sh" >> ~/.bashrc
+# zsh
+echo "source ~/nuttxspace/nuttx-sdk/get_nuttx.sh" >> ~/.zshrc
 ```
 
-Open a new terminal, then activate the SDK in it:
+Open a **new** terminal (so the startup file is re-read), then activate the
+SDK in it:
 
-```console
-$ get_nuttx
+```bash
+get_nuttx
 ```
 
 ### 4. Install a toolchain
 
 Open the graphical menu (the same interface as NuttX's `make menuconfig`):
 
-```console
-$ get_nuttx -m
+```bash
+get_nuttx -m
 ```
 
 ![Selecting toolchains in the get_nuttx menu](images/toolchain_config.png)
@@ -103,18 +109,18 @@ $ get_nuttx -m
 
 First activate the SDK in this terminal, so its toolchains are on `PATH`:
 
-```console
-$ get_nuttx
+```bash
+get_nuttx
 ```
 
 Then configure a board and build. Because the toolchains are now on `PATH`,
 `make -j` finds and uses the right compiler automatically, no `CROSSDEV` and
 no extra flags:
 
-```console
-$ cd ~/nuttxspace/nuttx
-$ ./tools/configure.sh gd32vw553k-start:nsh   # any board:config
-$ make -j$(nproc)
+```bash
+cd ~/nuttxspace/nuttx
+./tools/configure.sh gd32vw553k-start:nsh   # any board:config
+make -j$(nproc)
 ```
 
 From here on it is the stock NuttX workflow (`configure.sh`, `make`,
@@ -123,18 +129,18 @@ terminal you build from.
 
 No board to try? Build the simulator, it runs as a normal Linux process:
 
-```console
-$ ./tools/configure.sh sim:nsh
-$ make -j$(nproc)
-$ ./nuttx        # nsh> prompt running on your PC
+```bash
+./tools/configure.sh sim:nsh
+make -j$(nproc)
+./nuttx        # nsh> prompt running on your PC
 ```
 
 ### Uninstall a toolchain
 
 Same menu, untick it:
 
-```console
-$ get_nuttx -m
+```bash
+get_nuttx -m
 ```
 
 Untick the toolchain and save. The menu lists what you removed and asks
@@ -145,9 +151,9 @@ accident).
 
 For each NuttX project you open in VSCode, run once:
 
-```console
-$ cd ~/nuttxspace/nuttx
-$ ~/nuttxspace/nuttx-sdk/scripts/nx-init-project.sh --arch riscv   # or arm, xtensa
+```bash
+cd ~/nuttxspace/nuttx
+~/nuttxspace/nuttx-sdk/scripts/nx-init-project.sh --arch riscv   # or arm, xtensa
 ```
 
 This drops a `.vscode/` into the project with:
@@ -252,10 +258,10 @@ case; these are for scripting, CI, and power users.
 
 ### CLI install (no menu)
 
-```console
-$ ~/nuttxspace/nuttx-sdk/scripts/setup.sh --list        # show all groups
-$ ~/nuttxspace/nuttx-sdk/scripts/setup.sh riscv          # install one group
-$ ~/nuttxspace/nuttx-sdk/scripts/setup.sh arm riscv xtensa
+```bash
+~/nuttxspace/nuttx-sdk/scripts/setup.sh --list        # show all groups
+~/nuttxspace/nuttx-sdk/scripts/setup.sh riscv          # install one group
+~/nuttxspace/nuttx-sdk/scripts/setup.sh arm riscv xtensa
 ```
 
 `get_nuttx -m`, `make menuconfig`, and `setup.sh` (no args) all open the same
@@ -266,8 +272,8 @@ menu; `setup.sh <group>` installs without the UI (works at any terminal size).
 Versions are read from `nuttx/tools/ci/platforms/ubuntu.sh` of the tree in
 use (found via `--nuttx`, `$NUTTX_BASE`, `../nuttx`, or `~/nuttxspace/nuttx`):
 
-```console
-$ ~/nuttxspace/nuttx-sdk/scripts/setup.sh --nuttx ~/nuttxspace/nuttx riscv
+```bash
+~/nuttxspace/nuttx-sdk/scripts/setup.sh --nuttx ~/nuttxspace/nuttx riscv
 ```
 
 ### Install from the CI Docker image
@@ -277,8 +283,8 @@ from the official CI image (`ghcr.io/apache/nuttx/apache-nuttx-ci-linux`).
 Useful for the `rx` group, which otherwise builds from source.
 Needs Docker and a ~6 GB pull:
 
-```console
-$ ~/nuttxspace/nuttx-sdk/scripts/setup.sh --docker riscv
+```bash
+~/nuttxspace/nuttx-sdk/scripts/setup.sh --docker riscv
 ```
 
 ### Update a toolchain
@@ -286,9 +292,9 @@ $ ~/nuttxspace/nuttx-sdk/scripts/setup.sh --docker riscv
 Versions live upstream. When NuttX bumps one in CI, delete the directory and
 reinstall:
 
-```console
-$ rm -rf ~/nuttxspace/nuttx-sdk/toolchains/riscv-none-elf-gcc
-$ get_nuttx -m        # tick riscv again, or: setup.sh riscv
+```bash
+rm -rf ~/nuttxspace/nuttx-sdk/toolchains/riscv-none-elf-gcc
+get_nuttx -m        # tick riscv again, or: setup.sh riscv
 ```
 
 ### Activate in every shell (instead of opt-in)
